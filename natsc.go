@@ -15,60 +15,72 @@ import "github.com/streamrail/concurrent-map"
 var connectionMap = cmap.New()
 
 //export Close
-func Close(connection int64) {
-	nc, _ := connectionMap.Get(strconv.FormatInt(connection, 10))
-	nc.Close()
-	connectionMap.Remove(strconv.FormatInt(connection, 10))
+func Close(connection_id int) {
+  connection_id_string := strconv.Itoa(connection_id)
+	nc, _ := connectionMap.Get(connection_id_string)
+  connection := nc.(*nats.Conn)
+	connection.Close()
+	connectionMap.Remove(connection_id_string)
 }
 
 //export CloseAll
 func CloseAll() {
 	for item := range connectionMap.Iter() {
-		item.Val.Close()
+		item.Val.(*nats.Conn).Close()
 	}
 
 	connectionMap = cmap.New()
 }
 
 //export Connect
-func Connect(c_url *C.char) int64 {
+func Connect(c_url *C.char) int32 {
 	url := C.GoString(c_url)
-	rando := rand.NewSource(time.Now().UnixNano())
-	rand64 := rando.Int63()
+	rando := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rand_int := rando.Int31()
 
 	nc, _ := nats.Connect(url)
-	connectionMap.Set(strconv.FormatInt(rand64, 10), nc)
-	return rand64
+  for {
+    connection_id_string := strconv.FormatInt(int64(rand_int), 10)
+    if connectionMap.Has(connection_id_string) == true {
+      rand_int = rando.Int31()
+    } else {
+	    connectionMap.Set(connection_id_string, nc)
+      break
+    }
+  }
+
+	return rand_int
 }
 
 //export Flush
-func Flush(connection int64) {
-	nc, _ := connectionMap.Get(strconv.FormatInt(connection, 10))
-	nc.Flush()
+func Flush(connection_id int) {
+  connection_id_string := strconv.Itoa(connection_id)
+	nc, _ := connectionMap.Get(connection_id_string)
+	nc.(*nats.Conn).Flush()
 }
 
 //export FlushAll
 func FlushAll() {
 	for item := range connectionMap.Iter() {
-		item.Val.Flush()
+		item.Val.(*nats.Conn).Flush()
 	}
 }
 
 //export Publish
-func Publish(connection int64, c_subject *C.char, c_message *C.char) {
-	subject := C.GoString(c_subject)
-	message := C.GoString(c_message)
-	nc, _ := connectionMap.Get(strconv.FormatInt(connection, 10))
-	nc.Publish(subject, []byte(message))
+func Publish(connection_id int, c_subject *C.char, c_message *C.char, message_length C.int) {
+  connection_id_string := strconv.Itoa(connection_id)
+	nc, _ := connectionMap.Get(connection_id_string)
+	nc.(*nats.Conn).Publish(C.GoString(c_subject), C.GoBytes(unsafe.Pointer(c_message), message_length))
 }
 
 //export Request
-func Request(connection int64, c_subject *C.char, c_message *C.char) *C.char {
+func Request(connection_id int, c_subject *C.char, c_message *C.char) *C.char {
+  connection_id_string := strconv.Itoa(connection_id)
 	subject := C.GoString(c_subject)
 	message := C.GoString(c_message)
 
-	nc, _ := connectionMap.Get(strconv.FormatInt(connection, 10))
-	msg, err := nc.Request(subject, []byte(message), 10*time.Millisecond)
+	nc, _ := connectionMap.Get(connection_id_string)
+	msg, err := nc.(*nats.Conn).Request(subject, []byte(message), 10*time.Millisecond)
 
 	if err != nil {
 		fmt.Printf("Request failed: %v\n", err)

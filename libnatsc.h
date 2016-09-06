@@ -5,7 +5,7 @@
 /* Start of preamble from import "C" comments.  */
 
 
-#line 3 "/home/bdewitt/Code/nats/natsc.go"
+#line 3 "/Users/abrandoned/Code/nats/natsc.go"
 
 #include <stdlib.h>
 
@@ -56,19 +56,19 @@ extern "C" {
 #endif
 
 
-extern void Close(GoInt64 p0);
+extern void Close(GoInt p0);
 
 extern void CloseAll();
 
-extern GoInt64 Connect(char* p0);
+extern GoInt32 Connect(char* p0);
 
-extern void Flush(GoInt64 p0);
+extern void Flush(GoInt p0);
 
 extern void FlushAll();
 
-extern void Publish(GoInt64 p0, char* p1, char* p2);
+extern void Publish(GoInt p0, char* p1, char* p2, int p3);
 
-extern char* Request(GoInt64 p0, char* p1, char* p2);
+extern char* Request(GoInt p0, char* p1, char* p2);
 
 #ifdef __cplusplus
 }
